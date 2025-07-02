@@ -10,6 +10,7 @@ import { FaEye, FaEyeSlash, FaSpinner, FaEnvelope, FaLock, FaSignInAlt, FaUserPl
 
 import supabase from '../../lib/supabaseClient';
 import Link from 'next/link';
+import useStore from '../../store/useStore';
 
 const schema = yup.object().shape({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -23,6 +24,7 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const setUser = useStore((state) => state.setUser);
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -39,14 +41,14 @@ export default function LoginForm() {
 
     try {
       const { email, password } = data;
-      const { user, error } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) {
+      if (signInError) {
         toast.dismiss(loadingToast);
-        toast.error(error.message, {
+        toast.error(signInError.message, {
           duration: 4000,
           style: {
             background: '#fef2f2',
@@ -56,6 +58,11 @@ export default function LoginForm() {
         });
         setLoading(false);
         return;
+      }
+
+      // Set user in Zustand store
+      if (signInData.user) {
+        setUser(signInData.user);
       }
 
       toast.dismiss(loadingToast);
@@ -69,7 +76,7 @@ export default function LoginForm() {
       });
 
       setLoading(false);
-      router.push('/dashboard');
+      router.push('/profile');
     } catch (error) {
       toast.dismiss(loadingToast);
       toast.error('An unexpected error occurred. Please try again.', {
